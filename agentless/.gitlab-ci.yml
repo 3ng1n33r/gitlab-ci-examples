@@ -1,0 +1,105 @@
+stages:
+  - lint
+  - build
+  - test
+  - cleanup
+  - push
+  - deploy
+  - rollback
+
+docker-lint:
+  stage: lint
+  script:
+    - docker run --rm -i hadolint/hadolint < Dockerfile
+
+yaml-lint:
+  stage: lint
+  image:
+    name: cytopia/yamllint
+    entrypoint: ["/bin/ash", "-c"]
+  script:
+    - yamllint -f colored .
+
+helm-lint:
+  stage: lint
+  image: c8h11no2/kubectl-helm-yc:0.1
+  script:
+    - helm lint .helm
+
+build:
+  stage: build
+  script:
+    - export DOCKER_DEFAULT_PLATFORM=linux/amd64
+    - docker build -t $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHORT_SHA .
+
+test:
+  stage: test
+  image:
+    name: docker/compose:1.29.2
+    entrypoint: [""]
+  script:
+    - docker-compose
+        -p "$CI_PROJECT_NAME"_"$CI_COMMIT_SHORT_SHA"
+      up
+        --abort-on-container-exit
+        --exit-code-from test
+        --quiet-pull
+
+cleanup:
+  stage: cleanup
+  image:
+    name: docker/compose:1.29.2
+    entrypoint: [""]
+  script:
+    - docker-compose -p "$CI_PROJECT_NAME"_"$CI_COMMIT_SHORT_SHA" down
+  when: always
+
+push:
+  stage: push
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+  script:
+    - docker push $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: c8h11no2/kubectl-helm-yc:0.1
+  variables:
+    KUBECONFIG: /tmp/.kubeconfig
+    ENVIRONMENT: production
+  script:
+    - yc config set token $YC_TOKEN
+    - echo "$K8S_CONFIG" | base64 -d > $KUBECONFIG
+    - INGRESS_LB_IP=$(kubectl get services ingress-nginx-controller -n ingress-nginx --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    - APP_URL=$CI_PROJECT_NAME.$INGRESS_LB_IP.sslip.io
+    - helm upgrade --install $CI_PROJECT_NAME .helm
+        --set image=$CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_COMMIT_REF_SLUG
+        --set imageTag=$CI_COMMIT_SHORT_SHA
+        --set ingress.host=$APP_URL
+        --namespace $CI_PROJECT_NAME-$ENVIRONMENT
+        --wait
+        --timeout 300s
+        --atomic
+        --debug
+  only:
+    - main
+
+rollback:
+  stage: rollback
+  image: c8h11no2/kubectl-helm-yc:0.1
+  variables:
+    KUBECONFIG: /tmp/.kubeconfig
+    ENVIRONMENT: production
+  script:
+    - yc config set token $YC_TOKEN
+    - echo "$K8S_CONFIG" | base64 -d > $KUBECONFIG
+    - helm rollback $CI_PROJECT_NAME 0
+        --namespace $CI_PROJECT_NAME-$ENVIRONMENT
+        --wait
+        --timeout 300s
+        --debug
+  only:
+    - main
+  when: manual

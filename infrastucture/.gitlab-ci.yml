@@ -1,0 +1,76 @@
+variables:
+  TF_ADDRESS: "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/terraform/state/${CI_PROJECT_NAME}-${CI_COMMIT_BRANCH}"
+  TF_CLI_CONFIG_FILE: .terraformrc
+  DOWNSTREAM_PROJECT_ID: 44246025
+  DOWNSTREAM_PROJECT_URL: "https://gitlab.com/api/v4/projects/${DOWNSTREAM_PROJECT_ID}"
+  DOWNSTREAM_REF_NAME: "main"
+
+image:
+  name: c8h11no2/terraform-yc:0.2
+  entrypoint:
+    - '/usr/bin/env'
+    - 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+
+stages:
+  - validate
+  - plan
+  - apply
+  - trigger-downstream
+  - destroy
+
+before_script:
+  - export TF_VAR_YC_TOKEN=${YC_TOKEN}
+  - export TF_VAR_YC_CLOUD_ID=${YC_CLOUD_ID}
+  - export TF_VAR_YC_FOLDER_ID=${YC_FOLDER_ID}
+  - >- 
+        terraform init
+        -backend-config="address=${TF_ADDRESS}"
+        -backend-config="lock_address=${TF_ADDRESS}/lock"
+        -backend-config="unlock_address=${TF_ADDRESS}/lock"
+        -backend-config="username=${TF_USERNAME}"
+        -backend-config="password=${TF_PASSWORD}"
+        -backend-config="lock_method=POST"
+        -backend-config="unlock_method=DELETE"
+        -backend-config="retry_wait_min=5"
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -out="planfile"
+  dependencies:
+    - validate
+  artifacts:
+    paths:
+      - planfile
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -input=false "planfile"
+  dependencies:
+    - plan
+
+trigger-downstream:
+  stage: trigger-downstream
+  script:
+    # pass the variable to the downstream project
+    - TF_OUT_K8S_CONFIG=$(terraform output kubeconfig | sed '/EOT/d' | base64)
+    - >- 
+        curl 
+        --request PUT
+        --header "PRIVATE-TOKEN: $DOWNSTREAM_PROJECT_API_TOKEN" "$DOWNSTREAM_PROJECT_URL/variables/K8S_CONFIG"
+        --form "value=$TF_OUT_K8S_CONFIG"
+    # triggering downstream project
+    - "curl -X POST --fail -F token=$DOWNSTREAM_TRIGGER_TOKEN -F ref=$DOWNSTREAM_REF_NAME $DOWNSTREAM_PROJECT_URL/trigger/pipeline"
+  allow_failure: true
+
+destroy: 
+  stage: destroy
+  script:
+    - terraform destroy --auto-approve
+  when: manual

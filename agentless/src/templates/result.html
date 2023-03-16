@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block body %}
+	{% include 'search-box.html' %}
+
+    <!-- OUTPUT SEARCH RESULTS -->
+    {% if q | length != 0 %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+              <th scope="col">Mode S</th>
+              <th scope="col">Registration</th>
+              <th scope="col">Type</th>
+              <th scope="col">Aircraft</th>
+              <th scope="col">Airline</th>
+              <th scope="col">Operator</th>
+              <th scope="col">Timestamp</th>
+            </tr>
+          </thead>
+        <tbody>
+      {% for i in q %}
+      <tr>
+        <td>{{ i[0] }}</td>
+        <td><a href="https://www.jetphotos.com/registration/{{ i[1] }}">{{ i[1] }}</a></td>
+        <td>{{ i[2] }}</td>
+        <td>{{ i[3] }}</td>
+        <td>{{ i[4] }}</td>
+        <td>{{ i[5] }}</td>
+        <td>{{ i[6] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    </tbody>
+    {% else %}
+    <!-- Alerts -->
+    <div class="alert alert-danger" role="alert">
+      <strong>К сожалению, ничего не найдено ¯\_(ツ)_/¯</strong>
+    </div>
+    {% endif %}
+{% endblock %}
