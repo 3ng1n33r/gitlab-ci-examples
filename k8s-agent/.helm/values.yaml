@@ -1,0 +1,20 @@
+# Default values for flask-app.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image: https://gitlab.com/3ng1n33r/flask-app
+imageTag: master-54
+imagePullSecret: cicd-gitlab-registry
+
+ingress:
+  host: flask-app.lvh.me
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

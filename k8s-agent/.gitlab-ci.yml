@@ -1,0 +1,115 @@
+include:
+- template: Security/SAST.gitlab-ci.yml
+- template: Security/Secret-Detection.gitlab-ci.yml
+
+variables: # Choose which scanner you want
+  IMAGE_SCAN_ENGINE_TRIVY: "true"
+
+stages:
+  - build
+  - test
+  - deploy
+  - dast-free
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/${CI_COMMIT_REF_SLUG}:${CI_COMMIT_SHORT_SHA}"
+
+container_scanning:
+  stage: test
+  image:
+    name: docker.io/aquasec/trivy:latest
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
+    TRIVY_USERNAME: "$CI_REGISTRY_USER"
+    TRIVY_PASSWORD: "$CI_REGISTRY_PASSWORD"
+    TRIVY_AUTH_URL: "$CI_REGISTRY"
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_CACHE_DIR: ".trivycache/"
+    FULL_IMAGE_NAME: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHORT_SHA
+  rules:
+    - if: $IMAGE_SCAN_ENGINE_TRIVY == "true"
+      when: always
+  script:
+    - trivy --version
+    # cache cleanup is needed when scanning images with the same tags, it does not remove the database
+    - time trivy image --clear-cache
+    # update vulnerabilities db
+    - time trivy image --download-db-only
+    # Builds report and puts it in the default workdir $CI_PROJECT_DIR, so `artifacts:` can take it from there
+    - time trivy image --exit-code 0 --format template --template "@/contrib/gitlab.tpl"
+        --output "$CI_PROJECT_DIR/gl-container-scanning-report.json" "$FULL_IMAGE_NAME"
+    # Prints full report
+    - time trivy image --exit-code 0 "$FULL_IMAGE_NAME"
+    # Fail on critical vulnerabilities
+    - time trivy image --exit-code 1 --severity CRITICAL "$FULL_IMAGE_NAME"
+  cache:
+    paths:
+      - .trivycache/
+    # Enables https://docs.gitlab.com/ee/user/application_security/container_scanning/ (Container Scanning report is available on GitLab EE Ultimate or GitLab.com Gold)
+  artifacts:
+    when: always
+    paths:
+      - gl-container-scanning-report.json
+
+sast:
+  stage: test
+  variables:
+    SCAN_KUBERNETES_MANIFESTS: "true" #enable kubesec for manifests and charts
+  artifacts:
+    paths:
+      - gl-sast-report.json
+
+secret_detection:
+  stage: test
+  artifacts:
+    paths:
+      - gl-secret-detection-report.json
+
+deploy:
+  stage: deploy
+  image:
+    name: c8h11no2/kubectl-helm:0.3
+    entrypoint: [""]
+  script:
+    - kubectl config get-contexts
+    - kubectl config use-context $K8S_CONTEXT
+    - helm upgrade --install $CI_PROJECT_PATH_SLUG .helm
+        --namespace $APP_NAMESPACE
+        --set image=$CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG
+        --set imageTag=$CI_COMMIT_SHORT_SHA
+        --set ingress.host=$APP_HOST
+        --wait
+        --timeout 300s
+        --atomic
+        --debug
+  only:
+    - main
+
+dast-free:
+  stage: dast-free
+  image: 
+    name: owasp/zap2docker-weekly
+    entrypoint: [""]
+  variables:
+    DAST_HOSTNAME: "https://$APP_HOST"
+  script:
+    - mkdir /zap/wrk
+    - zap-baseline.py -t $DAST_HOSTNAME -I -r report.html
+    - cp /zap/wrk/report.html .
+  artifacts:
+    paths:
+      - report.html
+  only:
+    - main
