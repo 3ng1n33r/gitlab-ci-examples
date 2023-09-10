@@ -8,13 +8,16 @@
     <table class="table table-striped">
         <thead>
             <tr>
-              <th scope="col">Mode S</th>
-              <th scope="col">Registration</th>
-              <th scope="col">Type</th>
-              <th scope="col">Aircraft</th>
-              <th scope="col">Airline</th>
-              <th scope="col">Operator</th>
-              <th scope="col">Timestamp</th>
+              <th scope="col">Mode S <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The ICAO 24-bit address of the aircraft."></i></th>
+              <th scope="col">Registration <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The registration of the aircraft."></i></th>
+              <th scope="col">Aircraft type <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The type of the aircraft, as an ICAO code."></i></th>
+              <th scope="col">Model <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The model of the aircraft."></i></th>
+              <th scope="col">Serial number <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The manufacturer serial number of the aircraft."></i></th>
+              <th scope="col">Airline <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The name of the airline."></i></th>
+              <th scope="col">Operator <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The airline which operates the aircraft."></i></th>
+              <th scope="col">Code <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The IATA/ICAO code of the airline."></i></th>
+              <th scope="col">Code <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="The IATA/ICAO code of the operator."></i></th>
+              <th scope="col">Timestamp <i class="bi bi-question-circle-fill" data-toggle="tooltip" data-original-title="Date the record was added to the database."></i></th>
             </tr>
           </thead>
         <tbody>
@@ -27,14 +30,18 @@
         <td>{{ i[4] }}</td>
         <td>{{ i[5] }}</td>
         <td>{{ i[6] }}</td>
+        <td>{{ i[7] }}</td>
+        <td>{{ i[8] }}</td>
+        <td>{{ i[9] }}</td>
       </tr>
       {% endfor %}
     </table>
     </tbody>
     {% else %}
     <!-- Alerts -->
-    <div class="alert alert-danger" role="alert">
-      <strong>К сожалению, ничего не найдено ¯\_(ツ)_/¯</strong>
+    <div class="alert alert-warning alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <i class="bi bi-exclamation-triangle"></i> Sorry, but nothing was found.
     </div>
     {% endif %}
 {% endblock %}

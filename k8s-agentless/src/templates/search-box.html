@@ -1,7 +1,24 @@
 <!-- SEARCH FORM -->
 <nav class="navbar navbar-light bg-light">
-    <form method="post" class="form-inline">
-      <input class="form-control mr-sm-2" type="text" aria-label="Search" name="search" required>
-      <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
-    </form>
-  </nav>
+  <form id="advance-search-form" method="post" role="form" class="form-inline">
+    <div class="form-group">
+      <select class="custom-select" name="select" required="required">
+        <option value="registration">Reg. ID</option>
+        <option value="icao_24bit_address">ICAO Address</option>
+        <option value="aircraft_type">Aicraft Type</option>
+        <option value="model">Model</option>
+        <option value="serial_number">Serial Number</option>
+        <option value="airline">Airline</option>
+        <option value="operator">Operator</option>
+        <option value="airline_code">Code A</option>
+        <option value="operator_code">Code O</option>
+      </select>
+    </div>
+    <div class="form-group text required">
+      <input class="form-control" id="search-flight-id" name="query" placeholder="Contains" required="required" />
+    </div>
+    <div class="form-group">
+      <input type="submit" class="btn btn-outline-success my-2 my-sm-0" value="Query">
+    </div>
+  </form>
+</nav>

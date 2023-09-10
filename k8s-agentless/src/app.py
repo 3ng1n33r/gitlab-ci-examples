@@ -5,10 +5,10 @@ DBFILE = "aircraft.db"
 
 app = Flask(__name__)
 
-def queryfromdb(search):
+def queryfromdb(select,query):
   conn = sqlite3.connect(DBFILE)
   cursor = conn.cursor()
-  cursor.execute("SELECT * FROM `aircraftdb` WHERE `icao` LIKE ? OR `reg` LIKE ?", [search+"%", search+"%"])
+  cursor.execute("SELECT * FROM aircraftdb WHERE (%s) LIKE (?) LIMIT 25" % (select), (query+"%",))
   results = cursor.fetchall()
   conn.close()
   return results
@@ -20,8 +20,9 @@ def _get_():
 @app.route('/', methods=["POST"])
 def _post_():
   if request.method == "POST":
-     req = dict(request.form)
-     acdata = queryfromdb(req["search"])
+     select = request.form['select']
+     query = request.form['query']
+     acdata = queryfromdb(select,query)
   else:
      acdata = []
   return render_template('result.html', q=acdata)

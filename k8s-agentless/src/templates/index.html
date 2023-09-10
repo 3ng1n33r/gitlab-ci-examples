@@ -3,7 +3,8 @@
 {% block body %}
   {% include 'search-box.html' %}
     <!-- Alerts -->
-    <div class="alert alert-info" role="alert">
-    <strong>Для поиска информации о гражданских воздушных судах с регистрацией в РФ, введите регистрационный номер или ICAO 24-bit code. <br> Например, RA-02757 или 140AC5.</strong> 
+    <div class="alert alert-info alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+      <i class="bi bi-info-square"></i> This application provides an interface to search the database <i class="bi bi-github"></i> <a href="https://github.com/3ng1n33r/ru-aircraft-db" class="alert-link">ru-aircraft-db</a>
     </div>
 {% endblock %}
