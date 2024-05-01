@@ -5,7 +5,7 @@
 - установим postgresql из чарта
 
 ```
-helm install postgresql postgresql/ --set global.postgresql.auth.username="todoapp_user" --set global.postgresql.auth.password="todoapp_password" --set global.postgresql.auth.database="todoapp_db" --set primary.persistence.size="2Gi" --namespace todoapp --wait --timeout 300s --atomic --debug
+helm install postgresql charts/postgresql --set global.postgresql.auth.username="todoapp_user" --set global.postgresql.auth.password="todoapp_password" --set global.postgresql.auth.database="todoapp_db" --set primary.persistence.size="2Gi" --namespace todoapp --wait --timeout 300s --atomic --debug
 ```
 
 ### Подготовка Vault
