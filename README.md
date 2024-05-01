@@ -18,3 +18,7 @@
 - gitlab agent в кластере;
 - применяются инструменты DevSecOps (SAST, DAST, Secret Detection)
 - сборка с помощью kaniko.
+
+### vault-jwt
+
+- получаем секреты из Hashicorp Vault в пайплайне (метод gitlab jwt).
